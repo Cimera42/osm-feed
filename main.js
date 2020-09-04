@@ -23,6 +23,7 @@ const bounds = {
 };
 
 const pad3 = (n) => String(n).padStart(3, '0');
+const range = (start, end) => [...Array(end - start).keys()].map(i => i + start);
 
 const getURLForSequenceNumber = (id) => {
     const f1 = pad3(Math.floor(id / 1000000));
@@ -31,7 +32,13 @@ const getURLForSequenceNumber = (id) => {
     return `${minuteURL}${f1}/${f2}/${f3}.osc.gz`;
 };
 
-const inBounds = (lat, lon) => lat < bounds.top && lat > bounds.bottom && lon < bounds.right && lon > bounds.left;
+// TODO: handle crossing of east/west equator, north/south pole
+const inBounds = (lat, lon) => (
+    lat < bounds.top &&
+    lat > bounds.bottom &&
+    lon < bounds.right &&
+    lon > bounds.left
+);
 
 const filterNodesToChangeset = (filtered, nodes) => {
     if(nodes.node) {
@@ -77,51 +84,43 @@ const getBoundedChangesetsFromSequenceXML = (xml) => {
     }
     const changesetDetails = [...filteredChangesets].map(getChangesetDetails);
     return Promise.all(changesetDetails);
-}
+};
 
 const getLatestSequenceNumber = () => {
     return axios.get(`${minuteURL}state.txt`).then((response) => {
         return response.data.match(/sequenceNumber=(\d+)/)[1];
     });
-}
+};
 
 const process = (sequenceNumber) => {
-    return getSequenceData(sequenceNumber).then(getBoundedChangesetsFromSequenceXML).then(console.log);
-}
+    return getSequenceData(sequenceNumber)
+        .then(getBoundedChangesetsFromSequenceXML)
+        .then(results => ({
+            id: sequenceNumber,
+            results,
+        }));
+};
 
-const promiseLoop = (getNext) => {
-    const next = getNext();
-    if(next) {
-        return next.then((doContinue) => {
-            if(doContinue) {
-                return promiseLoop(getNext);
-            }
-        });
+const processFromTo = (start, end) => {
+    if(start < end) {
+        return Promise.all(range(start, end).map(process));
     }
-}
-
-const processFromTo = (start, end) => new Promise((resolve) => {
-    let current = start;
-    return promiseLoop(() => {
-        const next = String(current);
-        current++;
-        if(next <= end) {
-            console.log(`Processing ${next}`);
-            return process(next);
-        } else {
-            resolve(end);
-        }
-    });
-});
+    return Promise.resolve([]);
+};
 
 const settingsFile = './settings.json';
 fs.readFile(settingsFile)
     .then(JSON.parse)
     .then(settings => {
+        // TODO cronjob
+        // TODO re-check latest sequence number in-case sequence incremented during processing
         return getLatestSequenceNumber().then(latestSequenceNumber => {
-            return processFromTo(parseInt(settings.last), parseInt(latestSequenceNumber))
-                .then(lastProcessed => {
-                    return fs.writeFile(settingsFile, JSON.stringify({last: String(lastProcessed)}, null, 4));
+            return processFromTo(parseInt(settings.last) + 1, parseInt(latestSequenceNumber))
+                .then((results) => {
+                    const sorted = results.sort((a, b) => a.id - b.id);
+                    // TODO print to Discord/RSS feed
+                    console.log(sorted);
+                    return fs.writeFile(settingsFile, JSON.stringify({last: latestSequenceNumber}, null, 4));
                 });
         });
     });
