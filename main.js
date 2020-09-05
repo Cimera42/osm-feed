@@ -4,8 +4,17 @@ const zlib = require('zlib');
 const parseXML = require('xml2js').parseStringPromise;
 const schedule = require('node-schedule');
 const fs = require('fs').promises;
+
 const log = require('./log');
 const discord = require('./discord');
+
+const minuteURL = 'https://planet.openstreetmap.org/replication/minute/'
+const settingsFile = './settings.json';
+
+// Global variables
+let settings;
+const profileImageUrlCache = {};
+let isProcessing = false;
 
 const axiosInstance = axios.create({
     timeout: 15000,
@@ -26,15 +35,6 @@ const gunzip = (data) => new Promise((resolve, reject) => {
     });
 });
 
-const minuteURL = 'https://planet.openstreetmap.org/replication/minute/'
-
-// Australia bounds
-const bounds = {
-    top: -9.088013,
-    bottom: -44.5904672,
-    left: 112.5878906,
-    right: 154.5117188,
-};
 
 const pad3 = (n) => String(n).padStart(3, '0');
 const range = (start, size) => [...Array(size).keys()].map(i => i + start);
@@ -48,10 +48,10 @@ const getURLForSequenceNumber = (id) => {
 
 // TODO: handle crossing of east/west equator, north/south pole
 const inBounds = (lat, lon) => (
-    lat < bounds.top &&
-    lat > bounds.bottom &&
-    lon < bounds.right &&
-    lon > bounds.left
+    lat < settings.bounds.top &&
+    lat > settings.bounds.bottom &&
+    lon < settings.bounds.right &&
+    lon > settings.bounds.left
 );
 
 const filterNodesToChangeset = (filtered, nodes) => {
@@ -130,10 +130,6 @@ const processFromTo = (start, end) => {
     return Promise.resolve([]);
 };
 
-const settingsFile = './settings.json';
-
-// Global settings var
-let settings;
 const readSettings = () => {
     return fs.readFile(settingsFile)
         .then(JSON.parse)
@@ -165,8 +161,6 @@ const makeEmbedFromChange = (change, imageUrl = null) => ({
         text: `${change.count} changes`
     }
 });
-
-const profileImageUrlCache = {};
 
 const getProfileImageUrl = (userId) => {
     const cached = profileImageUrlCache[userId];
@@ -238,7 +232,6 @@ const processingLoop = () => {
     });
 };
 
-let isProcessing = false;
 const processingLock = () => {
     log('Processing triggered');
     if(!isProcessing) {
