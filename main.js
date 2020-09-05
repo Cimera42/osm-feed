@@ -5,10 +5,10 @@ const parseXML = require('xml2js').parseStringPromise;
 const schedule = require('node-schedule');
 const fs = require('fs').promises;
 const log = require('./log');
-const { resolve } = require('path');
+const discord = require('./discord');
 
 const axiosInstance = axios.create({
-    timeout: 120000,
+    timeout: 15000,
 });
 axiosInstance.defaults.raxConfig = {
     instance: axiosInstance,
@@ -71,8 +71,10 @@ const getChangesetDetails = (id) => {
         const element = response.data.elements[0];
         return {
             id,
-            user: element.user,
+            uid: element.uid,
+            username: element.user,
             comment: element.tags.comment === undefined ? null : element.tags.comment,
+            time: element.created_at,
         };
     });
 };
@@ -115,7 +117,7 @@ const process = (sequenceNumber) => {
             log(`Processed ${sequenceNumber}`);
             return {
                 id: sequenceNumber,
-                results,
+                changes: results,
             };
         });
 };
@@ -146,14 +148,54 @@ const writeSettings = () => {
     return fs.writeFile(settingsFile, JSON.stringify(settings, null, 4));
 };
 
+const sortById = (a, b) => a.id - b.id;
+const makeEmbedFromChange = (change, imageUrl = null) => ({
+    title: change.id,
+    description: change.comment,
+    url: `https://www.openstreetmap.org/changeset/${change.id}`,
+    color: discord.randomColor(),
+    timestamp: change.time,
+    author: {
+        name: change.username,
+        url: `https://www.openstreetmap.org/user/${change.username}`,
+        ...(imageUrl && {icon_url: imageUrl}),
+    }
+});
+
+const profileImageCache = {};
+
+const getProfileImageUrl = (userId) => {
+    const cached = profileImageCache[userId];
+    if(cached) {
+        return cached;
+    } else {
+        const get = axios.get(`https://api.openstreetmap.org/api/0.6/user/${userId}`).then(response => {
+            return parseXML(response.data).then(xml => xml.osm.user[0].img ? xml.osm.user[0].img[0].$.href : null);
+        });
+        cached[uid] = get;
+        return get;
+    }
+};
+
+const sendMessageForChange = (change) => {
+    return getProfileImageUrl(change.uid)
+        .then((imageUrl) => {
+            const embed = makeEmbedFromChange(change, imageUrl);
+            return discord.sendWebhookMessage(settings.webhookUrl, undefined, embed);
+        });
+};
+
 const doProcess = (start, end) => {
     return processFromTo(start, end)
         .then((results) => {
-            const sorted = results.sort((a, b) => a.id - b.id);
-            // TODO print to Discord/RSS feed
-            log(sorted);
-            settings.last = end;
-            return writeSettings();
+            log(results);
+            const collatedChanges = results.reduce((arr, minute) => [...arr, ...minute.changes], []).sort(sortById);
+            const messagePromises = collatedChanges.map(sendMessageForChange);
+
+            return Promise.all(messagePromises).then(() => {
+                settings.last = end;
+                return writeSettings();
+            });
         });
 };
 
@@ -170,7 +212,7 @@ const processingLoop = () => {
         return getLatestSequenceNumber().then(latestSequenceNumber => {
             log(`Got latest sequence as ${latestSequenceNumber}, last processed is ${settings.last}`)
             if(settings.last < latestSequenceNumber) {
-                // Only do 10 at a time to prevent timeouts if doing hundreds
+                // Only do 10 at a time to prevent request timeouts
                 const clampedDiff = Math.min(latestSequenceNumber - settings.last, 10);
                 const start = settings.last + 1;
                 const end = settings.last + clampedDiff;
@@ -200,9 +242,23 @@ const processingLock = () => {
 }
 
 readSettings().then(() => {
-    processingLock();
-    const job = schedule.scheduleJob({
-        second: 10,
-        minute: new schedule.Range(0, 59, 1)
-    }, processingLock);
+    let setup = Promise.resolve();
+    // Initialise last processed to latest
+    // future inits will start from the last processed sequence
+    if(settings.last === null) {
+        log('No last sequence, starting from most recent');
+        setup = getLatestSequenceNumber().then(latestSequenceNumber => {
+            log(`Got most recent as ${latestSequenceNumber}`);
+            settings.last = latestSequenceNumber
+            return writeSettings();
+        });
+    }
+
+    return setup.then(() => {
+        processingLock();
+        const job = schedule.scheduleJob({
+            second: 10,
+            minute: new schedule.Range(0, 59, 1)
+        }, processingLock);
+    });
 });
