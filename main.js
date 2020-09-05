@@ -171,21 +171,26 @@ const profileImageUrlCache = {};
 const getProfileImageUrl = (userId) => {
     const cached = profileImageUrlCache[userId];
     if(cached) {
+        log(`Using cached profile image for ${userId}`);
         return cached;
     } else {
         const get = axios.get(`https://api.openstreetmap.org/api/0.6/user/${userId}`).then(response => {
-            return parseXML(response.data).then(xml => xml.osm.user[0].img ? xml.osm.user[0].img[0].$.href : null);
+            return parseXML(response.data)
+                .then(xml => xml.osm.user[0].img ? xml.osm.user[0].img[0].$.href : null)
+                .then(url => {
+                    log(`Cached profile image for ${userId} as ${url}`);
+                    return url;
+                });
         });
         profileImageUrlCache[userId] = get;
         return get;
     }
 };
 
-const sendMessageForChange = (change) => {
+const makeFullEmbedForChange = (change) => {
     return getProfileImageUrl(change.uid)
         .then((imageUrl) => {
-            const embed = makeEmbedFromChange(change, imageUrl);
-            return discord.sendWebhookMessage(settings.webhookUrl, undefined, embed);
+            return makeEmbedFromChange(change, imageUrl);
         });
 };
 
@@ -194,11 +199,14 @@ const doProcess = (start, end) => {
         .then((results) => {
             log(results);
             const collatedChanges = results.reduce((arr, minute) => [...arr, ...minute.changes], []).sort(sortById);
-            const messagePromises = collatedChanges.map(sendMessageForChange);
+            const embedPromises = collatedChanges.map(makeFullEmbedForChange);
+            return Promise.all(embedPromises).then(embeds => {
+                const messagePromises = embeds.map(embed => discord.sendWebhookMessage(settings.webhookUrl, undefined, embed));
 
-            return Promise.all(messagePromises).then(() => {
-                settings.last = end;
-                return writeSettings();
+                return Promise.all(messagePromises).then(() => {
+                    settings.last = end;
+                    return writeSettings();
+                });
             });
         });
 };
