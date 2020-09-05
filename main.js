@@ -73,6 +73,7 @@ const getChangesetDetails = (id) => {
             id,
             uid: element.uid,
             username: element.user,
+            count: element.changes_count,
             comment: element.tags.comment === undefined ? null : element.tags.comment,
             time: element.created_at,
         };
@@ -159,20 +160,23 @@ const makeEmbedFromChange = (change, imageUrl = null) => ({
         name: change.username,
         url: `https://www.openstreetmap.org/user/${change.username}`,
         ...(imageUrl && {icon_url: imageUrl}),
+    },
+    footer: {
+        text: `${change.count} changes`
     }
 });
 
-const profileImageCache = {};
+const profileImageUrlCache = {};
 
 const getProfileImageUrl = (userId) => {
-    const cached = profileImageCache[userId];
+    const cached = profileImageUrlCache[userId];
     if(cached) {
         return cached;
     } else {
         const get = axios.get(`https://api.openstreetmap.org/api/0.6/user/${userId}`).then(response => {
             return parseXML(response.data).then(xml => xml.osm.user[0].img ? xml.osm.user[0].img[0].$.href : null);
         });
-        cached[uid] = get;
+        profileImageUrlCache[userId] = get;
         return get;
     }
 };
