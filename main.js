@@ -1,7 +1,21 @@
+const rax = require('retry-axios');
 const axios = require('axios');
 const zlib = require('zlib');
 const parseXML = require('xml2js').parseStringPromise;
+const schedule = require('node-schedule');
 const fs = require('fs').promises;
+const log = require('./log');
+const { resolve } = require('path');
+
+const axiosInstance = axios.create({
+    timeout: 120000,
+});
+axiosInstance.defaults.raxConfig = {
+    instance: axiosInstance,
+    retry: 3,
+    retryDelay: 1000,
+};
+const interceptorId = rax.attach(axiosInstance);
 
 const gunzip = (data) => new Promise((resolve, reject) => {
     zlib.gunzip(data, (err, result) => {
@@ -23,7 +37,7 @@ const bounds = {
 };
 
 const pad3 = (n) => String(n).padStart(3, '0');
-const range = (start, end) => [...Array(end - start).keys()].map(i => i + start);
+const range = (start, size) => [...Array(size).keys()].map(i => i + start);
 
 const getURLForSequenceNumber = (id) => {
     const f1 = pad3(Math.floor(id / 1000000));
@@ -53,9 +67,10 @@ const filterNodesToChangeset = (filtered, nodes) => {
 };
 
 const getChangesetDetails = (id) => {
-    return axios.get(`https://www.openstreetmap.org/api/0.6/changeset/${id}`).then(response => {
+    return axiosInstance.get(`https://www.openstreetmap.org/api/0.6/changeset/${id}`).then(response => {
         const element = response.data.elements[0];
         return {
+            id,
             user: element.user,
             comment: element.tags.comment === undefined ? null : element.tags.comment,
         };
@@ -64,7 +79,7 @@ const getChangesetDetails = (id) => {
 
 const getSequenceData = (sequenceNumber) => {
     const url = getURLForSequenceNumber(sequenceNumber);
-    return axios.get(url, { responseType: 'arraybuffer' }).then(res => {
+    return axiosInstance.get(url, { responseType: 'arraybuffer' }).then(res => {
         return gunzip(res.data).then((result) => {
             return parseXML(result.toString('utf8'));
         });
@@ -87,40 +102,107 @@ const getBoundedChangesetsFromSequenceXML = (xml) => {
 };
 
 const getLatestSequenceNumber = () => {
-    return axios.get(`${minuteURL}state.txt`).then((response) => {
-        return response.data.match(/sequenceNumber=(\d+)/)[1];
+    return axiosInstance.get(`${minuteURL}state.txt`).then((response) => {
+        return parseInt(response.data.match(/sequenceNumber=(\d+)/)[1]);
     });
 };
 
 const process = (sequenceNumber) => {
+    log(`Fetching sequence ${sequenceNumber}`);
     return getSequenceData(sequenceNumber)
         .then(getBoundedChangesetsFromSequenceXML)
-        .then(results => ({
-            id: sequenceNumber,
-            results,
-        }));
+        .then(results => {
+            log(`Processed ${sequenceNumber}`);
+            return {
+                id: sequenceNumber,
+                results,
+            };
+        });
 };
 
 const processFromTo = (start, end) => {
-    if(start < end) {
-        return Promise.all(range(start, end).map(process));
+    if(start <= end) {
+        return Promise.all(range(start, (end - start) + 1).map(process));
     }
     return Promise.resolve([]);
 };
 
 const settingsFile = './settings.json';
-fs.readFile(settingsFile)
-    .then(JSON.parse)
-    .then(settings => {
-        // TODO cronjob
-        // TODO re-check latest sequence number in-case sequence incremented during processing
+
+// Global settings var
+let settings;
+const readSettings = () => {
+    return fs.readFile(settingsFile)
+        .then(JSON.parse)
+        .then((result) => {
+            settings = result;
+            log('Read settings as:');
+            log(settings);
+        });
+};
+const writeSettings = () => {
+    log('Wrote settings as:');
+    log(settings);
+    return fs.writeFile(settingsFile, JSON.stringify(settings, null, 4));
+};
+
+const doProcess = (start, end) => {
+    return processFromTo(start, end)
+        .then((results) => {
+            const sorted = results.sort((a, b) => a.id - b.id);
+            // TODO print to Discord/RSS feed
+            log(sorted);
+            settings.last = end;
+            return writeSettings();
+        });
+};
+
+const promiseLoop = (getNext) => {
+    return getNext().then((doContinue) => {
+        if(doContinue) {
+            return promiseLoop(getNext);
+        }
+    });
+}
+
+const processingLoop = () => {
+    return promiseLoop(() => {
         return getLatestSequenceNumber().then(latestSequenceNumber => {
-            return processFromTo(parseInt(settings.last) + 1, parseInt(latestSequenceNumber))
-                .then((results) => {
-                    const sorted = results.sort((a, b) => a.id - b.id);
-                    // TODO print to Discord/RSS feed
-                    console.log(sorted);
-                    return fs.writeFile(settingsFile, JSON.stringify({last: latestSequenceNumber}, null, 4));
-                });
+            log(`Got latest sequence as ${latestSequenceNumber}, last processed is ${settings.last}`)
+            if(settings.last < latestSequenceNumber) {
+                // Only do 10 at a time to prevent timeouts if doing hundreds
+                const clampedDiff = Math.min(latestSequenceNumber - settings.last, 10);
+                const start = settings.last + 1;
+                const end = settings.last + clampedDiff;
+                log(`Continuing processing loop, from ${start} to ${end}`);
+                return doProcess(start, end).then(() => true);
+            } else {
+                log('Stopping processing loop');
+                return Promise.resolve(false);
+            }
         });
     });
+};
+
+let isProcessing = false;
+const processingLock = () => {
+    log('Processing triggered');
+    if(!isProcessing) {
+        log('Processing not in-progress, commencing');
+        isProcessing = true;
+        processingLoop().finally(() => {
+            log('Processing completed');
+            isProcessing = false;
+        });
+    } else {
+        log('Processing in-progress, skipping');
+    }
+}
+
+readSettings().then(() => {
+    processingLock();
+    const job = schedule.scheduleJob({
+        second: 10,
+        minute: new schedule.Range(0, 59, 1)
+    }, processingLock);
+});
