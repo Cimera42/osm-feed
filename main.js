@@ -154,7 +154,7 @@ const makeEmbedFromChange = (change, imageUrl = null) => ({
     timestamp: change.time,
     author: {
         name: change.username,
-        url: `https://www.openstreetmap.org/user/${change.username}`,
+        url: encodeURI(`https://www.openstreetmap.org/user/${change.username}`),
         ...(imageUrl && {icon_url: imageUrl}),
     },
     footer: {
@@ -200,6 +200,8 @@ const doProcess = (start, end) => {
                 return Promise.all(messagePromises).then(() => {
                     settings.last = end;
                     return writeSettings();
+                }).catch((err) => {
+                    console.log(err);
                 });
             });
         });
