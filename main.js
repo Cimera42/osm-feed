@@ -58,24 +58,34 @@ const filterNodesToChangeset = (filtered, nodes) => {
     if(nodes.node) {
         for(let i = 0; i < nodes.node.length; i++) {
             const nodeData = nodes.node[i].$;
-            if(inBounds(nodeData.lat, nodeData.lon)) {
-                return new Set([...filtered, nodeData.changeset]);
+            if(!filtered.has(nodeData.changeset)) {
+                if(inBounds(nodeData.lat, nodeData.lon)) {
+                    return new Map([
+                        ...filtered.entries(),
+                        [
+                            nodeData.changeset, {
+                                changeset: nodeData.changeset,
+                                timestamp: nodeData.timestamp,
+                            }
+                        ]
+                    ]);
+                }
             }
         }
     }
     return filtered;
 };
 
-const getChangesetDetails = (id) => {
-    return axiosInstance.get(`https://www.openstreetmap.org/api/0.6/changeset/${id}`).then(response => {
+const getChangesetDetails = ({changeset, timestamp}) => {
+    return axiosInstance.get(`https://www.openstreetmap.org/api/0.6/changeset/${changeset}`).then(response => {
         const element = response.data.elements[0];
         return {
-            id,
+            id: changeset,
             uid: element.uid,
             username: element.user,
             count: element.changes_count,
             comment: element.tags.comment === undefined ? null : element.tags.comment,
-            time: element.created_at,
+            time: timestamp,
         };
     });
 };
@@ -90,7 +100,7 @@ const getSequenceData = (sequenceNumber) => {
 };
 
 const getBoundedChangesetsFromSequenceXML = (xml) => {
-    let filteredChangesets = new Set();
+    let filteredChangesets = new Map();
     if(xml.osmChange.create) {
         filteredChangesets = xml.osmChange.create.reduce(filterNodesToChangeset, filteredChangesets);
     }
@@ -100,7 +110,7 @@ const getBoundedChangesetsFromSequenceXML = (xml) => {
     if(xml.osmChange.delete) {
         filteredChangesets = xml.osmChange.delete.reduce(filterNodesToChangeset, filteredChangesets);
     }
-    const changesetDetails = [...filteredChangesets].map(getChangesetDetails);
+    const changesetDetails = [...filteredChangesets.values()].map(getChangesetDetails);
     return Promise.all(changesetDetails);
 };
 
