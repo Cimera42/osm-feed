@@ -1,4 +1,5 @@
 const axios = require('axios');
+const log = require('./log');
 
 const api = "https://discord.com/api";
 
@@ -32,6 +33,20 @@ module.exports.sendWebhookMessage = (webhookUrl, message, embed) => {
     return axios.post(webhookUrl, {
         content: message,
         ...(embed && {embeds: [embed]}),
+    }).catch(error => {
+        if(error && error.response) {
+            if(error.response.status === 429) {
+                log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve(module.exports.sendWebhookMessage(webhookUrl, message, embed));
+                    }, error.response.data.retry_after);
+                });
+            }
+        }
+        else {
+            throw(error);
+        }
     });
 };
 
