@@ -76,6 +76,14 @@ const filterNodesToChangeset = (filtered, nodes) => {
     return filtered;
 };
 
+const getComment = (element) => {
+    if(element && element.tags && element.tags.comment)
+    {
+        return element.tags.comment;
+    }
+    return "(no comment)";
+}
+
 const getChangesetDetails = ({changeset, timestamp}) => {
     return axiosInstance.get(`https://www.openstreetmap.org/api/0.6/changeset/${changeset}`).then(response => {
         const element = response.data.elements[0];
@@ -84,7 +92,9 @@ const getChangesetDetails = ({changeset, timestamp}) => {
             uid: element.uid,
             username: element.user,
             count: element.changes_count,
-            comment: element.tags.comment === undefined ? null : element.tags.comment,
+            comment: getComment(element),
+            // TODO change to optional chaining when
+            // comment: element?.tags?.comment || "(no comment)",
             time: timestamp,
         };
     });
