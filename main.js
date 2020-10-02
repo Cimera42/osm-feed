@@ -189,12 +189,10 @@ const getProfileImageUrl = (userId) => {
         return cached;
     } else {
         const get = axios.get(`https://api.openstreetmap.org/api/0.6/user/${userId}`).then(response => {
-            return parseXML(response.data)
-                .then(xml => xml.osm.user[0].img ? xml.osm.user[0].img[0].$.href : null)
-                .then(url => {
-                    log(`Cached profile image for ${userId} as ${url}`);
-                    return url;
-                });
+            // TODO handle if it goes back to XML?
+            const url = response.data.user.img ? response.data.user.img.href : null;
+            log(`Cached profile image for ${userId} as ${url}`);
+            return url;
         });
         profileImageUrlCache[userId] = get;
         return get;
