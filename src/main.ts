@@ -27,12 +27,12 @@ const profileImageUrlCache: Record<string, Promise<string | null>> = {};
 let isProcessing = false;
 
 const axiosInstance = axios.create({
-    timeout: 15000,
+    timeout: 30000,
 });
 axiosInstance.defaults.raxConfig = {
     instance: axiosInstance,
     retry: 3,
-    retryDelay: 1000,
+    noResponseRetries: 3,
 };
 const interceptorId = rax.attach(axiosInstance);
 
