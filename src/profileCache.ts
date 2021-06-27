@@ -21,6 +21,12 @@ export class ProfileCache {
                     const url = response.data.user.img?.href || null;
                     log(`Cached profile image for ${userId} as ${url}`);
                     return url;
+                })
+                .catch((e) => {
+                    // 410 Gone: user deleted
+                    // Profile images are low-importance, log the error and move on
+                    log(`Could not get profile image for ${userId}`, e);
+                    return null;
                 });
 
             this.cache.set(userId, get);
