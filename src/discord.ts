@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, {AxiosError} from 'axios';
 import log from './log';
 
 const api = 'https://discord.com/api';
@@ -58,21 +58,18 @@ export const sendWebhookMessage = async (webhookUrl: string, message?: string, e
     try {
         return await axios.post(webhookUrl, {
             content: message,
-            embeds: embed || [],
+            embeds: embed ? [embed] : [],
         });
     } catch (error) {
-        if (error && error.response) {
-            if (error.response.status === 429) {
-                log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        resolve(sendWebhookMessage(webhookUrl, message, embed));
-                    }, error.response.data.retry_after);
-                });
-            }
-        } else {
-            throw error;
+        if (error?.response?.status === 429) {
+            log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve(sendWebhookMessage(webhookUrl, message, embed));
+                }, error.response.data.retry_after);
+            });
         }
+        throw error;
     }
 };
 
