@@ -16,11 +16,12 @@ If it ever goes down and is restarted, it will resume at the last set of changes
 
 To run:
 
-1. Run `npm install`
+1. Run `yarn install`
 2. Duplicate `settings.template.json` and rename to `settings.json`
 3. Add Discord webhook url to `settings.json` as `webhookUrl`
 4. [Optional] Customise `bounds` to notify of changes for in `settings.json`
-4. Run `node main.js`
+5. Run `yarn start`
 
 # Example Discord Messages
-![image](./screenshot.png)
+
+![image](./assets/screenshot.png)
