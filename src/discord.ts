@@ -28,28 +28,24 @@ export interface Embed {
  * @param {string} message
  * @param {Embed} embed
  */
-export const sendMessage = (
+export const sendMessage = async (
     token: string,
     channel: string,
     message: string | undefined,
     embed: Embed
 ) => {
-    return axios
-        .post(
-            `${api}/channels/${channel}/messages`,
-            {
-                content: message,
-                embed,
+    return axios.post(
+        `${api}/channels/${channel}/messages`,
+        {
+            content: message,
+            embed,
+        },
+        {
+            headers: {
+                Authorization: `Bot ${token}`,
             },
-            {
-                headers: {
-                    Authorization: `Bot ${token}`,
-                },
-            }
-        )
-        .catch((err) => {
-            console.log(err);
-        });
+        }
+    );
 };
 
 /**
@@ -58,30 +54,26 @@ export const sendMessage = (
  * @param {string} message
  * @param {Embed} embed
  */
-export const sendWebhookMessage = (
-    webhookUrl: string,
-    message: string | undefined,
-    embed: Embed
-) => {
-    return axios
-        .post(webhookUrl, {
+export const sendWebhookMessage = async (webhookUrl: string, message?: string, embed?: Embed) => {
+    try {
+        return await axios.post(webhookUrl, {
             content: message,
-            ...(embed && {embeds: [embed]}),
-        })
-        .catch((error) => {
-            if (error && error.response) {
-                if (error.response.status === 429) {
-                    log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            resolve(module.exports.sendWebhookMessage(webhookUrl, message, embed));
-                        }, error.response.data.retry_after);
-                    });
-                }
-            } else {
-                throw error;
-            }
+            embeds: embed || [],
         });
+    } catch (error) {
+        if (error && error.response) {
+            if (error.response.status === 429) {
+                log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve(sendWebhookMessage(webhookUrl, message, embed));
+                    }, error.response.data.retry_after);
+                });
+            }
+        } else {
+            throw error;
+        }
+    }
 };
 
 export const randomColor = () => {

@@ -14,6 +14,7 @@ import {
     SequenceXML,
     Settings,
     NodeSet,
+    UserResponse,
 } from './types';
 
 const minuteURL = 'https://planet.openstreetmap.org/replication/minute/';
@@ -22,7 +23,7 @@ const requestCount = 5;
 
 // Global variables
 let settings: Settings;
-const profileImageUrlCache: Record<string, Promise<string>> = {};
+const profileImageUrlCache: Record<string, Promise<string | null>> = {};
 let isProcessing = false;
 
 const axiosInstance = axios.create({
@@ -64,7 +65,10 @@ const inBounds = (lat: number, lon: number) =>
     lon < settings.bounds.right &&
     lon > settings.bounds.left;
 
-const filterNodesToChangeset = (filtered: Map<string, FilteredNode>, nodes: NodeSet) => {
+const filterNodesToChangeset = (
+    filtered: Map<string, FilteredNode>,
+    nodes: NodeSet
+): Map<string, FilteredNode> => {
     if (nodes.node) {
         for (let i = 0; i < nodes.node.length; i++) {
             const nodeData = nodes.node[i].$;
@@ -83,26 +87,25 @@ const filterNodesToChangeset = (filtered: Map<string, FilteredNode>, nodes: Node
     return filtered;
 };
 
-const getChangesetDetails = (info: FilteredNode) => {
+const getChangesetDetails = async (info: FilteredNode): Promise<ChangesetDetails> => {
     const {changeset, timestamp} = info;
-    return axiosInstance
-        .get<ChangesetDetailsResponse>(
-            `https://www.openstreetmap.org/api/0.6/changeset/${changeset}.json`
-        )
-        .then((response): ChangesetDetails => {
-            const element = response.data.elements[0];
-            return {
-                id: changeset,
-                uid: element.uid,
-                username: element.user,
-                count: element.changes_count,
-                comment: element.tags?.comment || '(no comment)',
-                time: timestamp,
-            };
-        });
+
+    const response = await axiosInstance.get<ChangesetDetailsResponse>(
+        `https://www.openstreetmap.org/api/0.6/changeset/${changeset}.json`
+    );
+
+    const element = response.data.elements[0];
+    return {
+        id: changeset,
+        uid: element.uid,
+        username: element.user,
+        count: element.changes_count,
+        comment: element.tags?.comment || '(no comment)',
+        time: timestamp,
+    };
 };
 
-const getSequenceData = (sequenceNumber: number) => {
+const getSequenceData = async (sequenceNumber: number): Promise<SequenceXML> => {
     const url = getURLForSequenceNumber(sequenceNumber);
     return axiosInstance.get<ArrayBuffer>(url, {responseType: 'arraybuffer'}).then((res) => {
         return gunzip(res.data).then((result) => {
@@ -135,23 +138,25 @@ const getBoundedChangesetsFromSequenceXML = (xml: SequenceXML) => {
     return Promise.all(changesetDetails);
 };
 
-const getLatestSequenceNumber = () => {
-    return axiosInstance.get(`${minuteURL}state.txt`).then((response) => {
-        return parseInt(response.data.match(/sequenceNumber=(\d+)/)[1]);
-    });
+const getLatestSequenceNumber = async () => {
+    const response = await axiosInstance.get<string>(`${minuteURL}state.txt`);
+    const match = response.data.match(/sequenceNumber=(\d+)/);
+    if (!match) {
+        throw new Error('Could not get latest sequence number.');
+    }
+    return parseInt(match[1]);
 };
 
-const process = (sequenceNumber: number) => {
+const process = async (sequenceNumber: number) => {
     log(`Fetching sequence ${sequenceNumber}`);
-    return getSequenceData(sequenceNumber)
-        .then(getBoundedChangesetsFromSequenceXML)
-        .then((results) => {
-            log(`Processed ${sequenceNumber}`);
-            return {
-                id: sequenceNumber,
-                changes: results,
-            };
-        });
+    const sequenceData = await getSequenceData(sequenceNumber);
+    const boundedChangesets = await getBoundedChangesetsFromSequenceXML(sequenceData);
+
+    log(`Processed ${sequenceNumber}`);
+    return {
+        id: sequenceNumber,
+        changes: boundedChangesets,
+    };
 };
 
 const processFromTo = (start: number, end: number) => {
@@ -161,24 +166,23 @@ const processFromTo = (start: number, end: number) => {
     return Promise.resolve([]);
 };
 
-const readSettings = () => {
-    return fs
-        .readFile(settingsFile)
-        .then((value) => JSON.parse(value.toString()))
-        .then((result) => {
-            settings = result;
-            log('Read settings as:');
-            log(settings);
-        });
+const readSettings = async () => {
+    const settingsValue = await fs.readFile(settingsFile, 'utf-8');
+    settings = JSON.parse(settingsValue);
+    log('Read settings as:');
+    log(settings);
 };
 const writeSettings = () => {
     log('Wrote settings as:');
     log(settings);
-    return fs.writeFile(settingsFile, JSON.stringify(settings, null, 4));
+    return fs.writeFile(settingsFile, JSON.stringify(settings, null, 4), 'utf-8');
 };
 
 const sortById = (a: ChangesetDetails, b: ChangesetDetails) => parseInt(a.id) - parseInt(b.id);
-const makeEmbedFromChange = (change: ChangesetDetails, imageUrl = null): discord.Embed => ({
+const makeEmbedFromChange = (
+    change: ChangesetDetails,
+    imageUrl: string | null = null
+): discord.Embed => ({
     title: change.id,
     description: change.comment,
     url: `https://www.openstreetmap.org/changeset/${change.id}`,
@@ -201,9 +205,9 @@ const getProfileImageUrl = (userId: number) => {
         return cached;
     } else {
         const get = axios
-            .get(`https://api.openstreetmap.org/api/0.6/user/${userId}.json`)
+            .get<UserResponse>(`https://api.openstreetmap.org/api/0.6/user/${userId}.json`)
             .then((response) => {
-                const url = response.data.user.img ? response.data.user.img.href : null;
+                const url = response.data.user.img?.href || null;
                 log(`Cached profile image for ${userId} as ${url}`);
                 return url;
             });
@@ -212,64 +216,49 @@ const getProfileImageUrl = (userId: number) => {
     }
 };
 
-const makeFullEmbedForChange = (change: ChangesetDetails) => {
-    return getProfileImageUrl(change.uid).then((imageUrl) => {
-        return makeEmbedFromChange(change, imageUrl);
-    });
+const makeFullEmbedForChange = async (change: ChangesetDetails) => {
+    const imageUrl = await getProfileImageUrl(change.uid);
+    return makeEmbedFromChange(change, imageUrl);
 };
 
-const doProcess = (start: number, end: number) => {
-    return processFromTo(start, end).then((results) => {
-        log(results);
-        const collatedChanges = results
-            .reduce<ChangesetDetails[]>((arr, minute) => [...arr, ...minute.changes], [])
-            .sort(sortById);
-        const embedPromises = collatedChanges.map(makeFullEmbedForChange);
-        return Promise.all(embedPromises).then((embeds) => {
-            const messagePromises = embeds.map((embed) =>
-                discord.sendWebhookMessage(settings.webhookUrl, undefined, embed)
-            );
+const doProcess = async (start: number, end: number) => {
+    const results = await processFromTo(start, end);
 
-            return Promise.all(messagePromises)
-                .then(() => {
-                    // settings.last = end;
-                    return writeSettings();
-                })
-                .catch((err) => {
-                    console.log(err);
-                });
-        });
-    });
+    log(results);
+    const collatedChanges = results
+        .reduce<ChangesetDetails[]>((arr, minute) => [...arr, ...minute.changes], [])
+        .sort(sortById);
+
+    const embedPromises = collatedChanges.map(makeFullEmbedForChange);
+    const embeds = await Promise.all(embedPromises);
+
+    const messagePromises = embeds.map((embed) =>
+        discord.sendWebhookMessage(settings.webhookUrl, undefined, embed)
+    );
+
+    await Promise.all(messagePromises);
+
+    settings.last = end;
+    return writeSettings();
 };
 
-// TODO make this not recursive
-const promiseLoop = (getNext: any) => {
-    return getNext().then((doContinue: boolean) => {
-        if (doContinue) {
-            return promiseLoop(getNext);
+const processingLoop = async () => {
+    while (true) {
+        const latestSequenceNumber = await getLatestSequenceNumber();
+
+        log(`Got latest sequence as ${latestSequenceNumber}, last processed is ${settings.last}`);
+        if (settings.last < latestSequenceNumber) {
+            // Only do 10 at a time to prevent request timeouts
+            const clampedDiff = Math.min(latestSequenceNumber - settings.last, requestCount);
+            const start = settings.last + 1;
+            const end = settings.last + clampedDiff;
+            log(`Continuing processing loop, from ${start} to ${end}`);
+            await doProcess(start, end);
+        } else {
+            log('Stopping processing loop');
+            break;
         }
-    });
-};
-
-const processingLoop = () => {
-    return promiseLoop(() => {
-        return getLatestSequenceNumber().then((latestSequenceNumber) => {
-            log(
-                `Got latest sequence as ${latestSequenceNumber}, last processed is ${settings.last}`
-            );
-            if (settings.last < latestSequenceNumber) {
-                // Only do 10 at a time to prevent request timeouts
-                const clampedDiff = Math.min(latestSequenceNumber - settings.last, requestCount);
-                const start = settings.last + 1;
-                const end = settings.last + clampedDiff;
-                log(`Continuing processing loop, from ${start} to ${end}`);
-                return doProcess(start, end).then(() => true);
-            } else {
-                log('Stopping processing loop');
-                return Promise.resolve(false);
-            }
-        });
-    });
+    }
 };
 
 const processingLock = () => {
@@ -286,27 +275,28 @@ const processingLock = () => {
     }
 };
 
-readSettings().then(() => {
-    let setup = Promise.resolve();
+const main = async () => {
+    await readSettings();
+
     // Initialise last processed to latest
     // future inits will start from the last processed sequence
     if (settings.last === null) {
         log('No last sequence, starting from most recent');
-        setup = getLatestSequenceNumber().then((latestSequenceNumber) => {
-            log(`Got most recent as ${latestSequenceNumber}`);
-            // settings.last = latestSequenceNumber;
-            return writeSettings();
-        });
+        const latestSequenceNumber = await getLatestSequenceNumber();
+
+        log(`Got most recent as ${latestSequenceNumber}`);
+        settings.last = latestSequenceNumber;
+        return writeSettings();
     }
 
-    return setup.then(() => {
-        processingLock();
-        const job = schedule.scheduleJob(
-            {
-                second: 10,
-                minute: new schedule.Range(0, 59, 1),
-            },
-            processingLock
-        );
-    });
-});
+    processingLock();
+    const job = schedule.scheduleJob(
+        {
+            second: 10,
+            minute: new schedule.Range(0, 59, 1),
+        },
+        processingLock
+    );
+};
+
+main();

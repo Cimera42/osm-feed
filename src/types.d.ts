@@ -72,3 +72,23 @@ export type ChangesetDetails = {
     comment: string;
     time: FilteredNode['timestamp'];
 };
+
+export interface UserResponse {
+    version: string;
+    generator: string;
+    copyright: string;
+    attribution: string;
+    license: string;
+    user: {
+        id: number;
+        display_name: string;
+        account_created: string;
+        description: string;
+        contributor_terms: {
+            agreed: boolean;
+        };
+        img?: {
+            href?: string;
+        };
+    };
+}

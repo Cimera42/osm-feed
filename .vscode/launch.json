@@ -8,7 +8,8 @@
             "command": "yarn start",
             "name": "Run start",
             "request": "launch",
-            "type": "node-terminal"
+            "type": "node-terminal",
+            "skipFiles": ["<node_internals>/**"]
         }
     ]
 }
