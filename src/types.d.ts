@@ -1,4 +1,4 @@
-export interface Settings {
+export interface SettingsData {
     last: number;
     webhookUrl: string;
     bounds: {
@@ -10,8 +10,12 @@ export interface Settings {
 }
 
 export interface NodeMetadata {
-    changeset: string;
+    id: string;
+    version: string;
     timestamp: string;
+    uid: string;
+    user: string;
+    changeset: string;
     lat: string;
     lon: string;
 }
