@@ -23,4 +23,4 @@ To run:
 4. Run `node main.js`
 
 # Example Discord Messages
-![image](./screenshot.png)
+![image](./assets/screenshot.png)
