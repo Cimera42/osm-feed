@@ -1,5 +1,5 @@
-import axios, {AxiosError} from 'axios';
-import log from './log';
+import axios from 'axios';
+import log from '../log';
 
 const api = 'https://discord.com/api';
 
