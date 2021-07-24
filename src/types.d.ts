@@ -1,12 +1,14 @@
+export interface Bounds {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
+
 export interface SettingsData {
     last: number;
     webhookUrl: string;
-    bounds: {
-        top: number;
-        bottom: number;
-        left: number;
-        right: number;
-    };
+    bounds: Bounds;
 }
 
 export interface NodeMetadata {
