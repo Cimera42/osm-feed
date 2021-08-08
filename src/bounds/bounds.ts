@@ -126,7 +126,12 @@ const generateCountryBounds = async (country: string) => {
                     next = toBeNext;
                 }
                 if (list.length) {
-                    merged.push(list);
+                    // TODO prevent this in actual algo
+                    if (list.length > 1 && compareLatLng(list[0], list[list.length - 1])) {
+                        merged.push(list.slice(1));
+                    } else {
+                        merged.push(list);
+                    }
                 }
             }
             log(merged.length);
