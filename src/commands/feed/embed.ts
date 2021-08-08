@@ -24,7 +24,7 @@ export const makeEmbedFromChange = (
 export const makeFullEmbedForChange = async (
     change: ChangesetDetails,
     profileCache: ProfileCache
-) => {
+): Promise<Embed> => {
     const imageUrl = await profileCache.get(change.uid);
     return makeEmbedFromChange(change, imageUrl);
 };

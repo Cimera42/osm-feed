@@ -5,7 +5,7 @@ import {ChangesetDetails, ChangesetDetailsResponse, FilteredNode} from '../../ty
 
 const minuteURL = 'https://planet.openstreetmap.org/replication/minute/';
 
-export const getLatestSequenceNumber = async () => {
+export const getLatestSequenceNumber = async (): Promise<number> => {
     const response = await axios.get<string>(`${minuteURL}state.txt`);
     const match = response.data.match(/sequenceNumber=(\d+)/);
     if (!match) {
@@ -14,7 +14,7 @@ export const getLatestSequenceNumber = async () => {
     return parseInt(match[1]);
 };
 
-export const getURLForSequenceNumber = (id: number) => {
+export const getURLForSequenceNumber = (id: number): string => {
     const f1 = pad3(Math.floor(id / 1000000));
     const f2 = pad3(Math.floor((id / 1000) % 1000));
     const f3 = pad3(Math.floor(id % 1000));

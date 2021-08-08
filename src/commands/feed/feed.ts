@@ -15,7 +15,7 @@ import {range} from '../../helpers';
 import log from '../../log';
 import {ProfileCache} from './profileCache';
 import {Settings} from '../../settings';
-import {ChangesetDetails, FilteredNode, Node, UserResponse} from '../../types';
+import {ChangesetDetails, FilteredNode, Node} from '../../types';
 
 const settingsFile = './settings.json';
 const requestCount = 5;
@@ -33,7 +33,7 @@ axiosInstance.defaults.raxConfig = {
     retry: 3,
     noResponseRetries: 3,
 };
-const interceptorId = rax.attach(axiosInstance);
+rax.attach(axiosInstance);
 
 // TODO: handle crossing of east/west equator, north/south pole
 const inBounds = (lat: number, lon: number) =>
@@ -149,7 +149,7 @@ const processingLock = () => {
     }
 };
 
-const runFeed = async () => {
+const runFeed = async (): Promise<void> => {
     settings = new Settings(settingsFile);
     await settings.readSettings();
 
@@ -167,7 +167,7 @@ const runFeed = async () => {
     }
 
     processingLock();
-    const job = schedule.scheduleJob(
+    schedule.scheduleJob(
         {
             second: 10,
             minute: new schedule.Range(0, 59, 1),

@@ -11,13 +11,21 @@
             "runtimeExecutable": "yarn",
             "runtimeArgs": ["start", "feed"],
             "skipFiles": ["<node_internals>/**"]
-        }
+        },
         {
             "type": "node",
             "name": "Generate bounds",
             "request": "launch",
             "runtimeExecutable": "yarn",
             "runtimeArgs": ["start", "bounds", "Australia"],
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "type": "node",
+            "name": "Lint",
+            "request": "launch",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": ["eslint", "src"],
             "skipFiles": ["<node_internals>/**"]
         }
     ]

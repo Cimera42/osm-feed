@@ -1,5 +1,4 @@
-import axios from 'axios';
-import log from '../../log';
+import axios, {AxiosResponse} from 'axios';
 
 const api = 'https://lz4.overpass-api.de/api/interpreter';
 
@@ -74,7 +73,15 @@ const query = async <T>(overpassQL: string) => {
     );
 };
 
-export const getCountryGeometry = async (country: string) => {
+export const getCountryGeometry = async (
+    country: string
+): Promise<
+    AxiosResponse<
+        Overpass.OverpassResponse<
+            Overpass.RelationElement<Overpass.Node | Overpass.Way | Overpass.Relation>
+        >
+    >
+> => {
     const queryString = `[out:json];relation[boundary="administrative"][admin_level="2"][type="boundary"][int_name="${country}"][type!=multilinestring];out geom;`;
     return await query<Overpass.RelationElement<Overpass.Node | Overpass.Way | Overpass.Relation>>(
         queryString

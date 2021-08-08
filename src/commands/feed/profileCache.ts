@@ -9,7 +9,7 @@ export class ProfileCache {
         this.cache = new Map();
     }
 
-    get(userId: number) {
+    get(userId: number): Promise<string> {
         const cached = this.cache.get(userId);
         if (cached) {
             log(`Using cached profile image for ${userId}`);

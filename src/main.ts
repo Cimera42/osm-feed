@@ -3,12 +3,14 @@ import {hideBin} from 'yargs/helpers';
 import generateCountryBounds from './commands/bounds/bounds';
 import runFeed from './commands/feed/feed';
 
-const argv = yargs(hideBin(process.argv))
+yargs(hideBin(process.argv))
     .scriptName('osm-feed')
     .command(
         'feed',
         'Run discord feed',
-        () => {},
+        () => {
+            return;
+        },
         () => {
             runFeed();
         }

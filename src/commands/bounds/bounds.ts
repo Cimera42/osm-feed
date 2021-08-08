@@ -3,7 +3,7 @@ import {getCountryGeometry, Overpass} from '../../lib/apis/overpass';
 import log from '../../log';
 import {Bounds} from '../../types';
 
-const generateCountryBounds = async (country: string) => {
+const generateCountryBounds = async (country: string): Promise<void> => {
     log(country);
     let bounds: Bounds;
 

@@ -2,7 +2,7 @@ function nowString(date: Date) {
     return '[' + date.toLocaleString('en-au', {hour12: false}) + ']';
 }
 
-export default (...args: any[]) => {
+export default (...args: unknown[]): void => {
     const date = new Date();
     let s = nowString(date);
     for (const key in args) {
