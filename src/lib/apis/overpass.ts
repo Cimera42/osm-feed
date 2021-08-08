@@ -1,5 +1,5 @@
 import axios from 'axios';
-import log from '../log';
+import log from '../../log';
 
 const api = 'https://lz4.overpass-api.de/api/interpreter';
 

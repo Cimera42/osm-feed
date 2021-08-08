@@ -1,5 +1,5 @@
-import axios from 'axios';
-import log from '../log';
+import axios, {AxiosResponse} from 'axios';
+import log from '../../log';
 
 const api = 'https://discord.com/api';
 
@@ -33,7 +33,7 @@ export const sendMessage = async (
     channel: string,
     message: string | undefined,
     embed: Embed
-) => {
+): Promise<AxiosResponse<unknown>> => {
     return axios.post(
         `${api}/channels/${channel}/messages`,
         {
@@ -54,7 +54,11 @@ export const sendMessage = async (
  * @param {string} message
  * @param {Embed} embed
  */
-export const sendWebhookMessage = async (webhookUrl: string, message?: string, embed?: Embed) => {
+export const sendWebhookMessage = async (
+    webhookUrl: string,
+    message?: string,
+    embed?: Embed
+): Promise<AxiosResponse<unknown>> => {
     try {
         return await axios.post(webhookUrl, {
             content: message,
@@ -73,7 +77,7 @@ export const sendWebhookMessage = async (webhookUrl: string, message?: string, e
     }
 };
 
-export const randomColor = () => {
+export const randomColor = (): number => {
     const d = () => Math.floor(Math.random() * 256).toString(16);
     const s = '0x' + d() + d() + d();
     return parseInt(s);

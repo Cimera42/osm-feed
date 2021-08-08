@@ -1,6 +1,6 @@
-import {Embed, randomColor} from '../apis/discord';
+import {Embed, randomColor} from '../../lib/apis/discord';
 import {ProfileCache} from './profileCache';
-import {ChangesetDetails} from '../types';
+import {ChangesetDetails} from '../../types';
 
 export const makeEmbedFromChange = (
     change: ChangesetDetails,

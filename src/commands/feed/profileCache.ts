@@ -1,6 +1,6 @@
 import axios from 'axios';
-import log from '../log';
-import {UserResponse} from '../types';
+import log from '../../log';
+import {UserResponse} from '../../types';
 
 export class ProfileCache {
     cache: Map<number, Promise<string | null>>;

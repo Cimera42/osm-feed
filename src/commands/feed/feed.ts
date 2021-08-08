@@ -4,14 +4,18 @@ import rax from 'retry-axios';
 import {Readable} from 'stream';
 import XmlStream from 'xml-stream';
 import zlib from 'zlib';
-import * as discord from '../apis/discord';
-import {getChangesetDetails, getLatestSequenceNumber, getSequenceDataStream} from '../apis/osm';
+import * as discord from '../../lib/apis/discord';
+import {
+    getChangesetDetails,
+    getLatestSequenceNumber,
+    getSequenceDataStream,
+} from '../../lib/apis/osm';
 import {makeFullEmbedForChange} from './embed';
-import {range} from '../helpers';
-import log from '../log';
+import {range} from '../../helpers';
+import log from '../../log';
 import {ProfileCache} from './profileCache';
-import {Settings} from '../settings';
-import {ChangesetDetails, FilteredNode, Node, UserResponse} from '../types';
+import {Settings} from '../../settings';
+import {ChangesetDetails, FilteredNode, Node, UserResponse} from '../../types';
 
 const settingsFile = './settings.json';
 const requestCount = 5;
@@ -40,10 +44,10 @@ const inBounds = (lat: number, lon: number) =>
 
 const getBoundedChangesetsFromSequenceStream = (stream: Readable) => {
     return new Promise<ChangesetDetails[]>((resolve) => {
-        let filteredChangesets = new Map<string, FilteredNode>();
+        const filteredChangesets = new Map<string, FilteredNode>();
 
         const unzipped = stream.pipe(zlib.createGunzip());
-        var xml = new XmlStream(unzipped);
+        const xml = new XmlStream(unzipped);
 
         xml.on('startElement: node', (node: Node) => {
             const nodeData = node.$;

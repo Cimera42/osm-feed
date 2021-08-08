@@ -3,7 +3,7 @@ function nowString(date: Date) {
 }
 
 export default (...args: any[]) => {
-    let date = new Date();
+    const date = new Date();
     let s = nowString(date);
     for (const key in args) {
         try {

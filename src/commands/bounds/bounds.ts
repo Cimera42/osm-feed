@@ -1,7 +1,7 @@
 import {promises as fs} from 'fs';
-import {getCountryGeometry, Overpass} from '../apis/overpass';
-import log from '../log';
-import {Bounds} from '../types';
+import {getCountryGeometry, Overpass} from '../../lib/apis/overpass';
+import log from '../../log';
+import {Bounds} from '../../types';
 
 const generateCountryBounds = async (country: string) => {
     log(country);
