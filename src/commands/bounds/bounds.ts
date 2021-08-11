@@ -1,22 +1,39 @@
 import {promises as fs} from 'fs';
 import {getCountryGeometry, Overpass} from '../../lib/apis/overpass';
-import {BoundsFile, Point} from '../../lib/geometry/common';
+import {BoundsFile} from '../../lib/geometry/common';
 import grahamScan from '../../lib/geometry/graham_scan';
 import {getBounds} from '../../lib/geometry/point_inside';
 import log from '../../log';
 import mergeLoops from './merge_loops';
 
-const geomToStr = (node: Overpass.Geometry | Point) => `${node.lon},${node.lat}`;
+const rawFileName = 'data/raw.json';
+const fullLoopsFileName = 'data/loops.json';
+const outputFileName = 'data/countryBounds.json';
 
-const generateCountryBounds = async (country: string): Promise<void> => {
-    log(country);
+const generateCountryBounds = async (country: string, dev = false): Promise<void> => {
+    log(`Generating bounds for country: "${country}"`);
 
-    // const response = await getCountryGeometry(country);
-    // const overpassData = response.data;
-    // await fs.writeFile('raw.json', JSON.stringify(overpassData, null, 4));
-    const overpassData: Overpass.OverpassResponse<
+    let overpassData: Overpass.OverpassResponse<
         Overpass.RelationElement<Overpass.Node | Overpass.Way | Overpass.Relation>
-    > = JSON.parse(await fs.readFile('data/raw.json', 'utf-8'));
+    >;
+
+    if (
+        !dev ||
+        (await fs
+            .stat(rawFileName)
+            .then(() => true)
+            .catch(() => false))
+    ) {
+        const response = await getCountryGeometry(country);
+        overpassData = response.data;
+
+        if (dev) {
+            await fs.writeFile(rawFileName, JSON.stringify(overpassData, null, 4));
+        }
+    } else if (dev) {
+        overpassData = JSON.parse(await fs.readFile(rawFileName, 'utf-8'));
+    }
+
     if (overpassData.elements.length > 0) {
         const relation = overpassData.elements.find((element) => element.type === 'relation');
         if (relation) {
@@ -26,11 +43,13 @@ const generateCountryBounds = async (country: string): Promise<void> => {
 
             const merged = mergeLoops(boundaries);
 
-            // Write to file for python notebook
-            await fs.writeFile(
-                'data/loops.json',
-                JSON.stringify(merged.sort((a, b) => b.length - a.length))
-            );
+            if (dev) {
+                // Write to file for python notebook
+                await fs.writeFile(
+                    fullLoopsFileName,
+                    JSON.stringify(merged.sort((a, b) => b.length - a.length))
+                );
+            }
 
             const convexBoundaries = merged.map((loop) => grahamScan(loop));
 
@@ -43,9 +62,11 @@ const generateCountryBounds = async (country: string): Promise<void> => {
                     })),
                 },
             };
-            await fs.writeFile('data/countryBounds.json', JSON.stringify(output));
+            await fs.writeFile(outputFileName, JSON.stringify(output));
         }
     }
+
+    log(`Completed generating bounds for country: "${country}"`);
 };
 
 export default generateCountryBounds;

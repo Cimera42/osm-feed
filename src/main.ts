@@ -1,4 +1,4 @@
-import yargs from 'yargs';
+import yargs, {boolean} from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import generateCountryBounds from './commands/bounds/bounds';
 import runFeed from './commands/feed/feed';
@@ -16,17 +16,22 @@ yargs(hideBin(process.argv))
         }
     )
     .command(
-        'bounds <country>',
+        'bounds <country> [--dev]',
         'Generate bounds for a country',
         (builder) => {
-            return builder.positional('country', {
-                describe: 'Country to generate bounds for',
-                type: 'string',
-            });
+            return builder
+                .positional('country', {
+                    describe: 'Country to generate bounds for',
+                    type: 'string',
+                })
+                .option('dev', {
+                    describe: 'Optimise process, and output files for development',
+                    type: 'boolean',
+                });
         },
         (argv) => {
             console.log(argv);
-            generateCountryBounds(argv.country);
+            generateCountryBounds(argv.country, argv.dev);
         }
     )
     .demandCommand()
