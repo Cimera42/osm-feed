@@ -3,7 +3,7 @@ export interface Point {
     lon: number;
 }
 
-export type Bounds = {
+export type BoundingBox = {
     minLat: number;
     maxLat: number;
     minLon: number;
@@ -14,4 +14,14 @@ export enum CrossingDirection {
     DOWNWARD = 1,
     UPWARD = -1,
     NOT_CROSSING = 0,
+}
+
+export type BoundsFile = Record<string, CountryBoundary>;
+
+export interface CountryBoundary {
+    country: string;
+    loops: {
+        bb: BoundingBox;
+        p: [number, number][];
+    }[];
 }

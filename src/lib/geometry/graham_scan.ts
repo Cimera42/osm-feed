@@ -1,3 +1,4 @@
+import log from '../../log';
 import {Point} from './common';
 
 const getLowestLeft = (loop: Point[]) => {
@@ -50,14 +51,17 @@ const ccw = (p0: Point, p1: Point, p2: Point) => {
     return (p1.lon - p0.lon) * (p2.lat - p0.lat) - (p2.lon - p0.lon) * (p1.lat - p0.lat);
 };
 
-const graham_scan = (loop: Point[]): Point[] => {
+const grahamScan = (loop: Point[]): Point[] => {
     const stack: Point[] = [];
     const p0 = getLowestLeft(loop);
 
     const polar_points = getPolarPoints(p0, loop);
     polar_points.forEach((point) => {
-        while (stack.length > 1 && ccw(stack[-2], stack[-1], point) <= 0) {
-            delete stack[-1];
+        while (
+            stack.length > 1 &&
+            ccw(stack[stack.length - 2], stack[stack.length - 1], point) <= 0
+        ) {
+            stack.length = stack.length - 1;
         }
         stack.push(point);
     });
@@ -65,4 +69,4 @@ const graham_scan = (loop: Point[]): Point[] => {
     return stack;
 };
 
-export default graham_scan;
+export default grahamScan;

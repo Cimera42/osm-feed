@@ -1,4 +1,4 @@
-import {Bounds, CrossingDirection, Point} from './common';
+import {BoundingBox, CrossingDirection, Point} from './common';
 
 const sideOfLine = (p0: Point, p1: Point, point: Point) => {
     return (point.lat - p0.lat) * (p1.lon - p0.lon) - (point.lon - p0.lon) * (p1.lat - p0.lat);
@@ -53,7 +53,7 @@ export const insideComplex = (polygon: Point[], point: Point): boolean => {
     return windingOrder != 0;
 };
 
-export const getBounds = (loop: Point[]): Bounds => {
+export const getBounds = (loop: Point[]): BoundingBox => {
     let minLat = loop[0].lat;
     let minLon = loop[0].lon;
     let maxLat = loop[0].lat;
@@ -69,7 +69,7 @@ export const getBounds = (loop: Point[]): Bounds => {
     return {minLat, maxLat, minLon, maxLon};
 };
 
-export const pointInsideBounds = (bounds: Bounds, point: Point): boolean => {
+export const pointInsideBounds = (bounds: BoundingBox, point: Point): boolean => {
     return (
         point.lat >= bounds[0] &&
         point.lat <= bounds[1] &&
