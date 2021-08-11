@@ -6,12 +6,21 @@ import {getBounds} from '../../lib/geometry/point_inside';
 import log from '../../log';
 import mergeLoops from './merge_loops';
 
-const rawFileName = 'data/raw.json';
-const fullLoopsFileName = 'data/loops.json';
-const outputFileName = 'data/countryBounds.json';
+const dataDir = 'data';
+const rawFileName = `${dataDir}/raw.json`;
+const fullLoopsFileName = `${dataDir}/loops.json`;
+const outputFileName = `${dataDir}/countryBounds.json`;
 
 const generateCountryBounds = async (country: string, dev = false): Promise<void> => {
     log(`Generating bounds for country: "${country}"`);
+
+    try {
+        await fs.mkdir(dataDir);
+    } catch (error) {
+        if (error.code !== 'EEXIST') {
+            throw error;
+        }
+    }
 
     let overpassData: Overpass.OverpassResponse<
         Overpass.RelationElement<Overpass.Node | Overpass.Way | Overpass.Relation>
@@ -21,16 +30,20 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
         !dev ||
         (await fs
             .stat(rawFileName)
-            .then(() => true)
-            .catch(() => false))
+            .then(() => false)
+            .catch(() => true))
     ) {
+        log(`Fetching OSM data`);
+
         const response = await getCountryGeometry(country);
         overpassData = response.data;
 
         if (dev) {
+            log(`Saving OSM data to cache`);
             await fs.writeFile(rawFileName, JSON.stringify(overpassData, null, 4));
         }
     } else if (dev) {
+        log(`Loading cached OSM data`);
         overpassData = JSON.parse(await fs.readFile(rawFileName, 'utf-8'));
     }
 
