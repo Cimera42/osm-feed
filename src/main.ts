@@ -1,7 +1,10 @@
-import yargs, {boolean} from 'yargs';
+import yargs from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import generateCountryBounds from './commands/bounds/bounds';
-import runFeed from './commands/feed/feed';
+import Feed from './commands/feed/feed';
+import Logger from './lib/log';
+
+const logger = new Logger('MAIN');
 
 yargs(hideBin(process.argv))
     .scriptName('osm-feed')
@@ -11,8 +14,9 @@ yargs(hideBin(process.argv))
         () => {
             return;
         },
-        () => {
-            runFeed();
+        async () => {
+            const feed = new Feed();
+            await feed.run();
         }
     )
     .command(
@@ -30,7 +34,7 @@ yargs(hideBin(process.argv))
                 });
         },
         (argv) => {
-            console.log(argv);
+            logger.debug(JSON.stringify(argv));
             generateCountryBounds(argv.country, argv.dev);
         }
     )
