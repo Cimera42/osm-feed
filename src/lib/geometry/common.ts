@@ -1,7 +1,8 @@
-export interface Point {
+export type Point = {
     lat: number;
     lon: number;
-}
+};
+export type SmallPoint = [lat: number, lng: number];
 
 export type BoundingBox = {
     minLat: number;
@@ -22,6 +23,6 @@ export interface CountryBoundary {
     country: string;
     loops: {
         bb: BoundingBox;
-        p: [number, number][];
+        p: SmallPoint[];
     }[];
 }
