@@ -25,25 +25,33 @@ export const getURLForSequenceNumber = (id: number): string => {
 };
 
 export const getChangesetDetails = async (info: FilteredNode): Promise<ChangesetDetails> => {
-    const {changeset, timestamp} = info;
+    try {
+        const {changeset, timestamp} = info;
 
-    const response = await axios.get<ChangesetDetailsResponse>(
-        `https://www.openstreetmap.org/api/0.6/changeset/${changeset}.json`
-    );
+        const response = await axios.get<ChangesetDetailsResponse>(
+            `https://www.openstreetmap.org/api/0.6/changeset/${changeset}.json`
+        );
 
-    const element = response.data.elements[0];
-    return {
-        id: changeset,
-        uid: element.uid,
-        username: element.user,
-        count: element.changes_count,
-        comment: element.tags?.comment || '(no comment)',
-        time: timestamp,
-    };
+        const element = response.data.elements[0];
+        return {
+            id: changeset,
+            uid: element.uid,
+            username: element.user,
+            count: element.changes_count,
+            comment: element.tags?.comment || '(no comment)',
+            time: timestamp,
+        };
+    } catch (error) {
+        throw new Error(error);
+    }
 };
 
 export const getSequenceDataStream = async (sequenceNumber: number): Promise<Readable> => {
-    const url = getURLForSequenceNumber(sequenceNumber);
-    const response = await axios.get<Readable>(url, {responseType: 'stream'});
-    return response.data;
+    try {
+        const url = getURLForSequenceNumber(sequenceNumber);
+        const response = await axios.get<Readable>(url, {responseType: 'stream'});
+        return response.data;
+    } catch (error) {
+        throw new Error(error);
+    }
 };
