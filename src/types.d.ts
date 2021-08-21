@@ -8,7 +8,6 @@ export interface Bounds {
 export interface SettingsData {
     last: number;
     webhookUrl: string;
-    bounds: Bounds;
 }
 
 export interface NodeMetadata {
