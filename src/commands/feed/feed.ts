@@ -16,9 +16,9 @@ import log from '../../log';
 import {ProfileCache} from './profileCache';
 import {Settings} from '../../settings';
 import {ChangesetDetails, FilteredNode, Node} from '../../types';
+import Logger from '../../lib/log';
 
-const settingsFile = './settings.json';
-const requestCount = 5;
+const logger = new Logger('FEED');
 
 // Global variables
 let settings: Settings;

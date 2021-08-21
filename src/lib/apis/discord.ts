@@ -1,6 +1,7 @@
 import axios, {AxiosResponse} from 'axios';
-import log from '../../log';
+import Logger from '../log';
 
+const logger = new Logger('DISCORD-API');
 const api = 'https://discord.com/api';
 
 export interface Embed {
@@ -21,13 +22,6 @@ export interface Embed {
     };
 }
 
-/**
- *
- * @param {string} token
- * @param {string} channel
- * @param {string} message
- * @param {Embed} embed
- */
 export const sendMessage = async (
     token: string,
     channel: string,
@@ -48,12 +42,6 @@ export const sendMessage = async (
     );
 };
 
-/**
- *
- * @param {string} webhookUrl
- * @param {string} message
- * @param {Embed} embed
- */
 export const sendWebhookMessage = async (
     webhookUrl: string,
     message?: string,
@@ -66,14 +54,14 @@ export const sendWebhookMessage = async (
         });
     } catch (error) {
         if (error?.response?.status === 429) {
-            log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
+            logger.warn(`Discord rate limit, waiting ${error.response.data.retry_after}`);
             return new Promise((resolve) => {
                 setTimeout(() => {
                     resolve(sendWebhookMessage(webhookUrl, message, embed));
                 }, error.response.data.retry_after);
             });
         }
-        throw error;
+        throw new Error(error);
     }
 };
 

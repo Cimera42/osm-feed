@@ -3,16 +3,13 @@ import {getCountryGeometry, Overpass} from '../../lib/apis/overpass';
 import {BoundsFile} from '../../lib/geometry/common';
 import grahamScan from '../../lib/geometry/graham_scan';
 import {getBounds} from '../../lib/geometry/point_inside';
-import log from '../../log';
+import Logger from '../../lib/log';
 import mergeLoops from './merge_loops';
 
-const dataDir = 'data';
-const rawFileName = `${dataDir}/raw.json`;
-const fullLoopsFileName = `${dataDir}/loops.json`;
-const outputFileName = `${dataDir}/countryBounds.json`;
+const logger = new Logger('BOUNDS');
 
 const generateCountryBounds = async (country: string, dev = false): Promise<void> => {
-    log(`Generating bounds for country: "${country}"`);
+    logger.info(`Generating bounds for country: "${country}"`);
 
     try {
         await fs.mkdir(dataDir);
@@ -33,18 +30,16 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
             .then(() => false)
             .catch(() => true))
     ) {
-        log(`Fetching OSM data`);
+        logger.info(`Fetching OSM data`);
 
         const response = await getCountryGeometry(country);
         overpassData = response.data;
 
         if (dev) {
-            log(`Saving OSM data to cache`);
-            await fs.writeFile(rawFileName, JSON.stringify(overpassData, null, 4));
+            logger.info(`Saving OSM data to cache`);
         }
     } else if (dev) {
-        log(`Loading cached OSM data`);
-        overpassData = JSON.parse(await fs.readFile(rawFileName, 'utf-8'));
+        logger.info(`Loading cached OSM data`);
     }
 
     if (overpassData.elements.length > 0) {
@@ -79,7 +74,7 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
         }
     }
 
-    log(`Completed generating bounds for country: "${country}"`);
+    logger.info(`Completed generating bounds for country: "${country}"`);
 };
 
 export default generateCountryBounds;

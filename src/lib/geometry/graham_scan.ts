@@ -1,4 +1,3 @@
-import log from '../../log';
 import {Point} from './common';
 
 const getLowestLeft = (loop: Point[]) => {
