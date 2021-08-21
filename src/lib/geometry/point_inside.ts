@@ -71,9 +71,9 @@ export const getBounds = (loop: Point[]): BoundingBox => {
 
 export const pointInsideBounds = (bounds: BoundingBox, point: Point): boolean => {
     return (
-        point.lat >= bounds[0] &&
-        point.lat <= bounds[1] &&
-        point.lon >= bounds[2] &&
-        point.lon <= bounds[3]
+        point.lat >= bounds.minLat &&
+        point.lat <= bounds.maxLat &&
+        point.lon >= bounds.minLon &&
+        point.lon <= bounds.maxLon
     );
 };
