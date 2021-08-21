@@ -1,6 +1,7 @@
-import axios from 'axios';
-import log from '../log';
+import axios, {AxiosResponse} from 'axios';
+import Logger from '../log';
 
+const logger = new Logger('DISCORD-API');
 const api = 'https://discord.com/api';
 
 export interface Embed {
@@ -21,19 +22,12 @@ export interface Embed {
     };
 }
 
-/**
- *
- * @param {string} token
- * @param {string} channel
- * @param {string} message
- * @param {Embed} embed
- */
 export const sendMessage = async (
     token: string,
     channel: string,
     message: string | undefined,
     embed: Embed
-) => {
+): Promise<AxiosResponse<unknown>> => {
     return axios.post(
         `${api}/channels/${channel}/messages`,
         {
@@ -48,32 +42,30 @@ export const sendMessage = async (
     );
 };
 
-/**
- *
- * @param {string} webhookUrl
- * @param {string} message
- * @param {Embed} embed
- */
-export const sendWebhookMessage = async (webhookUrl: string, message?: string, embed?: Embed) => {
+export const sendWebhookMessage = async (
+    webhookUrl: string,
+    message?: string,
+    embeds?: Embed[]
+): Promise<AxiosResponse<unknown>> => {
     try {
         return await axios.post(webhookUrl, {
             content: message,
-            embeds: embed ? [embed] : [],
+            embeds: embeds,
         });
     } catch (error) {
         if (error?.response?.status === 429) {
-            log(`Discord rate limit, waiting ${error.response.data.retry_after}`);
+            logger.warn(`Discord rate limit, waiting ${error.response.data.retry_after}`);
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    resolve(sendWebhookMessage(webhookUrl, message, embed));
+                    resolve(sendWebhookMessage(webhookUrl, message, embeds));
                 }, error.response.data.retry_after);
             });
         }
-        throw error;
+        throw new Error(error);
     }
 };
 
-export const randomColor = () => {
+export const randomColor = (): number => {
     const d = () => Math.floor(Math.random() * 256).toString(16);
     const s = '0x' + d() + d() + d();
     return parseInt(s);

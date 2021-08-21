@@ -5,10 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "command": "yarn start",
-            "name": "Run start",
+            "type": "node",
+            "name": "Run feed",
             "request": "launch",
-            "type": "node-terminal",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": ["start", "feed"],
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "type": "node",
+            "name": "Generate bounds",
+            "request": "launch",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": ["start", "bounds", "Australia"],
+            "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "type": "node",
+            "name": "Lint",
+            "request": "launch",
+            "runtimeExecutable": "yarn",
+            "runtimeArgs": ["eslint", "src"],
             "skipFiles": ["<node_internals>/**"]
         }
     ]

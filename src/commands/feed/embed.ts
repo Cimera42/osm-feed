@@ -1,6 +1,6 @@
-import {Embed, randomColor} from './apis/discord';
+import {Embed, randomColor} from '../../lib/apis/discord';
 import {ProfileCache} from './profileCache';
-import {ChangesetDetails} from './types';
+import {ChangesetDetails} from '../../types';
 
 export const makeEmbedFromChange = (
     change: ChangesetDetails,
@@ -24,7 +24,7 @@ export const makeEmbedFromChange = (
 export const makeFullEmbedForChange = async (
     change: ChangesetDetails,
     profileCache: ProfileCache
-) => {
+): Promise<Embed> => {
     const imageUrl = await profileCache.get(change.uid);
     return makeEmbedFromChange(change, imageUrl);
 };

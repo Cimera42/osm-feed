@@ -1,10 +1,4 @@
 {
     "last": null,
-    "webhookUrl": "<URL>",
-    "bounds": {
-        "top": -9.088013,
-        "bottom": -44.5904672,
-        "left": 112.5878906,
-        "right": 154.5117188
-    }
+    "webhookUrl": "<URL>"
 }
