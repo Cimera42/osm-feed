@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {Readable} from 'stream';
-import {pad3} from '../../helpers';
+import {pad3} from '../helpers';
 import {ChangesetDetails, ChangesetDetailsResponse, FilteredNode} from '../../types';
 import Logger from '../log';
 
