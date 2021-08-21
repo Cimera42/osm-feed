@@ -126,7 +126,7 @@ class Feed {
         logger.info('Processing triggered');
         await this.processingLoop();
         logger.info('Processing completed');
-        setTimeout(this.runProcessing, 10 * 1000);
+        setTimeout(this.runProcessing, constants.delayMs);
     };
 
     private processingLoop = async (): Promise<void> => {

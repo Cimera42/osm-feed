@@ -6,6 +6,7 @@ const outputFileName = `${dataDir}/countryBounds.json`;
 export default {
     settingsFile: './settings.json',
     requestCount: 5,
+    delayMs: 30 * 1000,
     bounds: {
         dataDir,
         rawFileName,
