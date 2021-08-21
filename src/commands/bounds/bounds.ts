@@ -1,4 +1,5 @@
 import {promises as fs} from 'fs';
+import constants from '../../constants';
 import {getCountryGeometry, Overpass} from '../../lib/apis/overpass';
 import {BoundsFile} from '../../lib/geometry/common';
 import grahamScan from '../../lib/geometry/graham_scan';
@@ -12,7 +13,7 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
     logger.info(`Generating bounds for country: "${country}"`);
 
     try {
-        await fs.mkdir(dataDir);
+        await fs.mkdir(constants.bounds.dataDir);
     } catch (error) {
         if (error.code !== 'EEXIST') {
             throw error;
@@ -26,7 +27,7 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
     if (
         !dev ||
         (await fs
-            .stat(rawFileName)
+            .stat(constants.bounds.rawFileName)
             .then(() => false)
             .catch(() => true))
     ) {
@@ -37,9 +38,11 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
 
         if (dev) {
             logger.info(`Saving OSM data to cache`);
+            await fs.writeFile(constants.bounds.rawFileName, JSON.stringify(overpassData, null, 4));
         }
     } else if (dev) {
         logger.info(`Loading cached OSM data`);
+        overpassData = JSON.parse(await fs.readFile(constants.bounds.rawFileName, 'utf-8'));
     }
 
     if (overpassData.elements.length > 0) {
@@ -54,7 +57,7 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
             if (dev) {
                 // Write to file for python notebook
                 await fs.writeFile(
-                    fullLoopsFileName,
+                    constants.bounds.fullLoopsFileName,
                     JSON.stringify(merged.sort((a, b) => b.length - a.length))
                 );
             }
@@ -70,7 +73,7 @@ const generateCountryBounds = async (country: string, dev = false): Promise<void
                     })),
                 },
             };
-            await fs.writeFile(outputFileName, JSON.stringify(output));
+            await fs.writeFile(constants.bounds.outputFileName, JSON.stringify(output));
         }
     }
 
