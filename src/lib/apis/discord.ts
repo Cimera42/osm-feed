@@ -45,19 +45,19 @@ export const sendMessage = async (
 export const sendWebhookMessage = async (
     webhookUrl: string,
     message?: string,
-    embed?: Embed
+    embeds?: Embed[]
 ): Promise<AxiosResponse<unknown>> => {
     try {
         return await axios.post(webhookUrl, {
             content: message,
-            embeds: embed ? [embed] : [],
+            embeds: embeds,
         });
     } catch (error) {
         if (error?.response?.status === 429) {
             logger.warn(`Discord rate limit, waiting ${error.response.data.retry_after}`);
             return new Promise((resolve) => {
                 setTimeout(() => {
-                    resolve(sendWebhookMessage(webhookUrl, message, embed));
+                    resolve(sendWebhookMessage(webhookUrl, message, embeds));
                 }, error.response.data.retry_after);
             });
         }
